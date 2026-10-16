@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>💸 Expenses Tracker</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="app">
@@ -33,6 +34,24 @@
       <div class="card card-balance">
         <span class="card-label">Balance</span>
         <span class="card-value" id="balance">₱0.00</span>
+      </div>
+    </section>
+
+    <!-- ===== GRAPH SECTION ===== -->
+    <section class="chart-section">
+      <div class="chart-header">
+        <h2>📈 Spending & Income Graph</h2>
+        <div class="chart-toggle">
+          <button class="chart-btn active" id="btnMonthly">📅 Monthly</button>
+          <button class="chart-btn" id="btnYearly">📆 Yearly</button>
+        </div>
+      </div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-dot expense-dot"></span> Expenses</span>
+        <span class="legend-item"><span class="legend-dot income-dot"></span> Income</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="mainChart"></canvas>
       </div>
     </section>
 
@@ -77,7 +96,7 @@
                 </label>
                 <label class="category-chip">
                   <input type="checkbox" name="category" value="P.N" />
-                  <span>📌 P.N</span>
+                  <span>📌 P.N (Personal Needs)</span>
                 </label>
                 <label class="category-chip category-all">
                   <input type="checkbox" id="selectAllCategories" />

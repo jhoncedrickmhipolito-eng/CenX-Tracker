@@ -139,6 +139,96 @@ body {
 .card-income .card-value { color: var(--income); }
 .card-balance .card-value { color: var(--balance); }
 
+/* ===== CHART SECTION ===== */
+.chart-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin: 24px 0;
+  box-shadow: var(--shadow);
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.chart-header h2 {
+  font-size: 1.2rem;
+}
+
+.chart-toggle {
+  display: flex;
+  gap: 6px;
+  background: var(--bg);
+  padding: 5px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.chart-btn {
+  padding: 9px 22px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.25s;
+}
+
+.chart-btn.active {
+  background: var(--balance);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+.chart-btn:hover:not(.active) {
+  color: var(--text);
+  background: var(--surface2);
+}
+
+.chart-legend {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 10px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.88rem;
+  color: var(--text-dim);
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.expense-dot { background: var(--expense); }
+.income-dot { background: var(--income); }
+
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 320px;
+}
+
+@media (max-width: 600px) {
+  .chart-container {
+    height: 240px;
+  }
+}
+
 /* ===== MAIN LAYOUT ===== */
 .main {
   display: grid;

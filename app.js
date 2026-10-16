@@ -22,6 +22,8 @@ let db = loadData();
 // ===== STATE =====
 let viewDate = new Date();
 let currentFilter = "all";
+let chartMode = "monthly"; // "monthly" or "yearly"
+let mainChart = null;
 
 // ===== DOM ELEMENTS =====
 const el = {
@@ -70,6 +72,129 @@ function showToast(msg, type = "success") {
   setTimeout(() => toast.remove(), 3000);
 }
 
+// ===== CHART =====
+function renderChart() {
+  const ctx = document.getElementById("mainChart");
+  if (!ctx) return;
+
+  let labels = [];
+  let expenseData = [];
+  let incomeData = [];
+
+  if (chartMode === "monthly") {
+    // Show 12 months of the current viewing year
+    const year = viewDate.getFullYear();
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    labels = monthNames;
+    expenseData = new Array(12).fill(0);
+    incomeData = new Array(12).fill(0);
+
+    db.expenses.forEach((e) => {
+      const d = new Date(e.date + "T00:00:00");
+      if (d.getFullYear() === year) {
+        expenseData[d.getMonth()] += e.amount;
+      }
+    });
+    db.income.forEach((i) => {
+      const d = new Date(i.date + "T00:00:00");
+      if (d.getFullYear() === year) {
+        incomeData[d.getMonth()] += i.amount;
+      }
+    });
+  } else {
+    // Yearly: find all years that have data + current year
+    const yearsSet = new Set();
+    yearsSet.add(viewDate.getFullYear());
+    db.expenses.forEach((e) => yearsSet.add(new Date(e.date + "T00:00:00").getFullYear()));
+    db.income.forEach((i) => yearsSet.add(new Date(i.date + "T00:00:00").getFullYear()));
+
+    const years = [...yearsSet].sort((a, b) => a - b);
+    labels = years.map(String);
+    expenseData = years.map(() => 0);
+    incomeData = years.map(() => 0);
+
+    db.expenses.forEach((e) => {
+      const y = new Date(e.date + "T00:00:00").getFullYear();
+      const idx = years.indexOf(y);
+      if (idx !== -1) expenseData[idx] += e.amount;
+    });
+    db.income.forEach((i) => {
+      const y = new Date(i.date + "T00:00:00").getFullYear();
+      const idx = years.indexOf(y);
+      if (idx !== -1) incomeData[idx] += i.amount;
+    });
+  }
+
+  const chartConfig = {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Expenses",
+          data: expenseData,
+          backgroundColor: "rgba(239, 68, 68, 0.7)",
+          borderColor: "#ef4444",
+          borderWidth: 2,
+          borderRadius: 6,
+          borderSkipped: false,
+        },
+        {
+          label: "Income",
+          data: incomeData,
+          backgroundColor: "rgba(34, 197, 94, 0.7)",
+          borderColor: "#22c55e",
+          borderWidth: 2,
+          borderRadius: 6,
+          borderSkipped: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#1e293b",
+          titleColor: "#f1f5f9",
+          bodyColor: "#cbd5e1",
+          borderColor: "#475569",
+          borderWidth: 1,
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: "rgba(71, 85, 105, 0.3)" },
+          ticks: { color: "#94a3b8", font: { size: 12 } },
+        },
+        y: {
+          grid: { color: "rgba(71, 85, 105, 0.3)" },
+          ticks: {
+            color: "#94a3b8",
+            font: { size: 12 },
+            callback: (v) => {
+              if (v >= 1000) return "₱" + (v / 1000).toFixed(0) + "k";
+              return "₱" + v;
+            },
+          },
+        },
+      },
+    },
+  };
+
+  if (mainChart) {
+    mainChart.destroy();
+  }
+  mainChart = new Chart(ctx, chartConfig);
+}
+
 // ===== RENDER =====
 function render() {
   const expenses = getItemsForMonth("expenses");
@@ -90,6 +215,7 @@ function render() {
 
   renderCategoryBreakdown(expenses);
   renderHistory();
+  renderChart();
 }
 
 function renderCategoryBreakdown(expenses) {
@@ -197,6 +323,21 @@ function formatDate(dateStr) {
   const d = new Date(dateStr + "T00:00:00");
   return d.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
 }
+
+// ===== EVENT: Chart Toggle (Monthly / Yearly) =====
+document.getElementById("btnMonthly").addEventListener("click", () => {
+  chartMode = "monthly";
+  document.getElementById("btnMonthly").classList.add("active");
+  document.getElementById("btnYearly").classList.remove("active");
+  renderChart();
+});
+
+document.getElementById("btnYearly").addEventListener("click", () => {
+  chartMode = "yearly";
+  document.getElementById("btnYearly").classList.add("active");
+  document.getElementById("btnMonthly").classList.remove("active");
+  renderChart();
+});
 
 // ===== EVENT: Month Navigation =====
 el.prevMonth.addEventListener("click", () => {
