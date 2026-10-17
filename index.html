@@ -161,6 +161,37 @@
             <p class="empty-msg">No expenses yet this month.</p>
           </div>
         </div>
+
+        <!-- Separate Graphs -->
+        <div class="charts-duo">
+          <!-- Expenses Only Graph -->
+          <div class="chart-section compact">
+            <div class="chart-header">
+              <h2>💸 Expenses Graph</h2>
+              <div class="chart-toggle">
+                <button class="chart-btn active" data-chart="expense" data-mode="monthly">📅 Monthly</button>
+                <button class="chart-btn" data-chart="expense" data-mode="yearly">📆 Yearly</button>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="expenseChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Income Only Graph -->
+          <div class="chart-section compact">
+            <div class="chart-header">
+              <h2>💰 Income Graph</h2>
+              <div class="chart-toggle">
+                <button class="chart-btn active" data-chart="income" data-mode="monthly">📅 Monthly</button>
+                <button class="chart-btn" data-chart="income" data-mode="yearly">📆 Yearly</button>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="incomeChart"></canvas>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
 

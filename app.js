@@ -22,8 +22,12 @@ let db = loadData();
 // ===== STATE =====
 let viewDate = new Date();
 let chartMode = "monthly";
+let expenseChartMode = "monthly";
+let incomeChartMode = "monthly";
 let currentPage = "expenses";
 let mainChart = null;
+let expenseChart = null;
+let incomeChart = null;
 
 // ===== CATEGORIES =====
 const CATEGORIES = [
@@ -168,29 +172,26 @@ function moveNavIndicator() {
   el.navIndicator.style.transform = `translateX(${active.offsetLeft}px)`;
 }
 
-// ===== CHART =====
-function renderChart() {
-  const ctx = document.getElementById("mainChart");
-  if (!ctx || currentPage !== "graph") return;
+// ===== CHART HELPERS =====
+const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-  let labels = [];
-  let expenseData = [];
-  let incomeData = [];
+// Build labels + series for a given mode
+function buildChartData(mode) {
+  let labels, expSeries, incSeries;
 
-  if (chartMode === "monthly") {
+  if (mode === "monthly") {
     const year = viewDate.getFullYear();
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    labels = monthNames;
-    expenseData = new Array(12).fill(0);
-    incomeData = new Array(12).fill(0);
+    labels = MONTH_SHORT;
+    expSeries = new Array(12).fill(0);
+    incSeries = new Array(12).fill(0);
 
     db.expenses.forEach((e) => {
       const d = new Date(e.date + "T00:00:00");
-      if (d.getFullYear() === year) expenseData[d.getMonth()] += e.amount;
+      if (d.getFullYear() === year) expSeries[d.getMonth()] += e.amount;
     });
     db.income.forEach((i) => {
       const d = new Date(i.date + "T00:00:00");
-      if (d.getFullYear() === year) incomeData[d.getMonth()] += i.amount;
+      if (d.getFullYear() === year) incSeries[d.getMonth()] += i.amount;
     });
   } else {
     const yearsSet = new Set();
@@ -200,81 +201,102 @@ function renderChart() {
 
     const years = [...yearsSet].sort((a, b) => a - b);
     labels = years.map(String);
-    expenseData = years.map(() => 0);
-    incomeData = years.map(() => 0);
+    expSeries = years.map(() => 0);
+    incSeries = years.map(() => 0);
 
     db.expenses.forEach((e) => {
       const y = new Date(e.date + "T00:00:00").getFullYear();
       const idx = years.indexOf(y);
-      if (idx !== -1) expenseData[idx] += e.amount;
+      if (idx !== -1) expSeries[idx] += e.amount;
     });
     db.income.forEach((i) => {
       const y = new Date(i.date + "T00:00:00").getFullYear();
       const idx = years.indexOf(y);
-      if (idx !== -1) incomeData[idx] += i.amount;
+      if (idx !== -1) incSeries[idx] += i.amount;
     });
   }
 
-  if (mainChart) mainChart.destroy();
+  return { labels, expSeries, incSeries };
+}
 
-  mainChart = new Chart(ctx, {
+function barDataset(label, data, color, rgba) {
+  return {
+    label,
+    data,
+    backgroundColor: rgba,
+    borderColor: color,
+    borderWidth: 2,
+    borderRadius: 6,
+    borderSkipped: false,
+  };
+}
+
+const CHART_OPTIONS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  interaction: { mode: "index", intersect: false },
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: "#1e293b",
+      titleColor: "#f1f5f9",
+      bodyColor: "#cbd5e1",
+      borderColor: "#475569",
+      borderWidth: 1,
+      padding: 12,
+      cornerRadius: 8,
+      callbacks: { label: (c) => `${c.dataset.label}: ${fmt(c.parsed.y)}` },
+    },
+  },
+  scales: {
+    x: {
+      grid: { color: "rgba(71, 85, 105, 0.3)" },
+      ticks: { color: "#94a3b8", font: { size: 12 } },
+    },
+    y: {
+      grid: { color: "rgba(71, 85, 105, 0.3)" },
+      ticks: {
+        color: "#94a3b8",
+        font: { size: 12 },
+        callback: (v) => (v >= 1000 ? "₱" + (v / 1000).toFixed(0) + "k" : "₱" + v),
+      },
+    },
+  },
+};
+
+// ===== CHARTS =====
+function drawChart(canvasId, instance, datasets, labels) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return instance;
+
+  if (instance) instance.destroy();
+  return new Chart(ctx, {
     type: "bar",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Expenses",
-          data: expenseData,
-          backgroundColor: "rgba(239, 68, 68, 0.7)",
-          borderColor: "#ef4444",
-          borderWidth: 2,
-          borderRadius: 6,
-          borderSkipped: false,
-        },
-        {
-          label: "Income",
-          data: incomeData,
-          backgroundColor: "rgba(34, 197, 94, 0.7)",
-          borderColor: "#22c55e",
-          borderWidth: 2,
-          borderRadius: 6,
-          borderSkipped: false,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: "index", intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: "#1e293b",
-          titleColor: "#f1f5f9",
-          bodyColor: "#cbd5e1",
-          borderColor: "#475569",
-          borderWidth: 1,
-          padding: 12,
-          cornerRadius: 8,
-          callbacks: { label: (c) => `${c.dataset.label}: ${fmt(c.parsed.y)}` },
-        },
-      },
-      scales: {
-        x: {
-          grid: { color: "rgba(71, 85, 105, 0.3)" },
-          ticks: { color: "#94a3b8", font: { size: 12 } },
-        },
-        y: {
-          grid: { color: "rgba(71, 85, 105, 0.3)" },
-          ticks: {
-            color: "#94a3b8",
-            font: { size: 12 },
-            callback: (v) => (v >= 1000 ? "₱" + (v / 1000).toFixed(0) + "k" : "₱" + v),
-          },
-        },
-      },
-    },
+    data: { labels, datasets },
+    options: CHART_OPTIONS,
   });
+}
+
+function renderChart() {
+  if (currentPage !== "graph") return;
+  const { labels, expSeries, incSeries } = buildChartData(chartMode);
+
+  mainChart = drawChart("mainChart", mainChart, [
+    barDataset("Expenses", expSeries, "#ef4444", "rgba(239, 68, 68, 0.7)"),
+    barDataset("Income", incSeries, "#22c55e", "rgba(34, 197, 94, 0.7)"),
+  ], labels);
+
+  // Expenses-only graph
+  const expData = buildChartData(expenseChartMode);
+  expenseChart = drawChart("expenseChart", expenseChart, [
+    barDataset("Expenses", expData.expSeries, "#ef4444", "rgba(239, 68, 68, 0.75)"),
+  ], expData.labels);
+
+  // Income-only graph
+  const incData = buildChartData(incomeChartMode);
+  incomeChart = drawChart("incomeChart", incomeChart, [
+    barDataset("Income", incData.incSeries, "#22c55e", "rgba(34, 197, 94, 0.75)"),
+  ], incData.labels);
 }
 
 // ===== CATEGORY BREAKDOWN (Graph page) =====
@@ -405,6 +427,7 @@ el.navTabs.forEach((tab) => {
 });
 
 // ===== EVENTS: Chart Toggle =====
+// Main combined chart (top)
 document.getElementById("btnMonthly").addEventListener("click", () => {
   chartMode = "monthly";
   document.getElementById("btnMonthly").classList.add("active");
@@ -417,6 +440,32 @@ document.getElementById("btnYearly").addEventListener("click", () => {
   document.getElementById("btnYearly").classList.add("active");
   document.getElementById("btnMonthly").classList.remove("active");
   renderChart();
+});
+
+// Separate Expenses / Income charts — each toggles independently
+document.querySelectorAll(".chart-btn[data-chart]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const which = btn.dataset.chart;
+    const mode = btn.dataset.mode;
+
+    document
+      .querySelectorAll(`.chart-btn[data-chart="${which}"]`)
+      .forEach((b) => b.classList.toggle("active", b === btn));
+
+    if (which === "expense") {
+      expenseChartMode = mode;
+      const { labels, expSeries } = buildChartData(mode);
+      expenseChart = drawChart("expenseChart", expenseChart, [
+        barDataset("Expenses", expSeries, "#ef4444", "rgba(239, 68, 68, 0.75)"),
+      ], labels);
+    } else {
+      incomeChartMode = mode;
+      const { labels, incSeries } = buildChartData(mode);
+      incomeChart = drawChart("incomeChart", incomeChart, [
+        barDataset("Income", incSeries, "#22c55e", "rgba(34, 197, 94, 0.75)"),
+      ], labels);
+    }
+  });
 });
 
 // ===== EVENTS: Month Navigation =====
