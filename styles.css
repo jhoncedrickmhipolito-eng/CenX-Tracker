@@ -611,6 +611,12 @@ body {
   text-overflow: ellipsis;
 }
 
+.history-desc.desc-empty {
+  font-weight: 400;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
 .history-meta {
   font-size: 0.8rem;
   color: var(--text-dim);

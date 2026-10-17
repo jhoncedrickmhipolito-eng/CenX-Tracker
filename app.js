@@ -323,13 +323,19 @@ function renderCategoryBreakdown() {
 
 // ===== HISTORIES =====
 function historyItemHTML(item, type) {
+  const desc =
+    item.description && item.description.trim()
+      ? esc(item.description)
+      : type === "expense"
+        ? esc((item.categories || []).join(", ") || "Expense")
+        : "Income";
   return `
     <div class="history-item" data-id="${item.id}" data-type="${type}">
       <div class="history-icon ${type}">
         ${type === "expense" ? "💸" : "💰"}
       </div>
       <div class="history-details">
-        <div class="history-desc">${esc(item.description)}</div>
+        <div class="history-desc ${item.description && item.description.trim() ? "" : "desc-empty"}">${desc}</div>
         <div class="history-meta">
           <span>📅 ${formatDate(item.date)}</span>
           ${type === "expense" && item.categories?.length
