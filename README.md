@@ -1,6 +1,10 @@
-# 💸 ExpensesTracker
+# ⚡ CenX Tracker
 
 A simple and intuitive expense tracking application to monitor your spending habits and manage your budget.
+
+## Live Site
+
+**https://jhoncedrickmhipolito-eng.github.io/ExpensesTracker/**
 
 ## Features
 
