@@ -60,7 +60,7 @@ body {
 /* ===== NAVIGATION BAR ===== */
 .totals-bar {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   margin-top: 18px;
 }
@@ -92,6 +92,7 @@ body {
 .seg-expense::before { background: var(--expense); }
 .seg-income::before { background: var(--income); }
 .seg-balance::before { background: var(--balance); }
+.seg-alltime::before { background: #a855f7; }
 
 .total-seg:hover {
   transform: translateY(-2px);
@@ -101,6 +102,15 @@ body {
 .seg-expense:hover { border-color: var(--expense); }
 .seg-income:hover { border-color: var(--income); }
 .seg-balance:hover { border-color: var(--balance); }
+.seg-alltime:hover { border-color: #a855f7; }
+
+.seg-alltime.active {
+  border-color: #a855f7;
+  background: rgba(168, 85, 247, 0.12);
+  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.35);
+}
+
+.seg-alltime.active .seg-value { color: #a855f7; }
 
 .seg-label {
   font-size: 0.75rem;
@@ -119,6 +129,7 @@ body {
 .seg-expense .seg-value { color: var(--expense); }
 .seg-income .seg-value { color: var(--income); }
 .seg-balance .seg-value { color: var(--balance); }
+.seg-alltime .seg-value { color: #a855f7; font-size: 1.1rem; }
 
 @media (max-width: 560px) {
   .totals-bar {

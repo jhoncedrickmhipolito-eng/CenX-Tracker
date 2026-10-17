@@ -25,6 +25,7 @@ let chartMode = "monthly";
 let expenseChartMode = "monthly";
 let incomeChartMode = "monthly";
 let currentPage = "expenses";
+let allTimeMode = false;
 let mainChart = null;
 let expenseChart = null;
 let incomeChart = null;
@@ -62,6 +63,8 @@ const el = {
   categoryMonthLabel: document.getElementById("categoryMonthLabel"),
   clearMonth: document.getElementById("clearMonth"),
   yearSelect: document.getElementById("yearSelect"),
+  allTimeToggle: document.getElementById("allTimeToggle"),
+  allTimeValue: document.getElementById("allTimeValue"),
   navTabs: document.querySelectorAll(".nav-tab"),
   navIndicator: document.getElementById("navIndicator"),
 };
@@ -85,6 +88,11 @@ function getMonthName(date) {
 function getItemsForMonth(type) {
   const key = getMonthKey(viewDate);
   return db[type].filter((item) => item.date.startsWith(key));
+}
+
+// Returns items for the current view: all-time or the selected month
+function getItems(type) {
+  return allTimeMode ? db[type] : getItemsForMonth(type);
 }
 
 function showToast(msg, type = "success") {
@@ -303,11 +311,11 @@ function renderChart() {
 // ===== CATEGORY BREAKDOWN (Graph page) =====
 function renderCategoryBreakdown() {
   if (currentPage !== "graph") return;
-  const expenses = getItemsForMonth("expenses");
-  el.categoryMonthLabel.textContent = getMonthName(viewDate);
+  const expenses = getItems("expenses");
+  el.categoryMonthLabel.textContent = allTimeMode ? "All Time ⏳" : getMonthName(viewDate);
 
   if (expenses.length === 0) {
-    el.categoryBreakdown.innerHTML = `<p class="empty-msg">No expenses yet this month.</p>`;
+    el.categoryBreakdown.innerHTML = `<p class="empty-msg">No expenses yet ${allTimeMode ? "at all" : "this month"}.</p>`;
     return;
   }
 
@@ -376,7 +384,7 @@ function historyItemHTML(item, type) {
 }
 
 function renderExpenseHistory() {
-  const items = getItemsForMonth("expenses").sort(
+  const items = getItems("expenses").sort(
     (a, b) => b.date.localeCompare(a.date) || b.id - a.id
   );
   el.expenseCount.textContent = items.length;
@@ -387,7 +395,7 @@ function renderExpenseHistory() {
 }
 
 function renderIncomeHistory() {
-  const items = getItemsForMonth("income").sort(
+  const items = getItems("income").sort(
     (a, b) => b.date.localeCompare(a.date) || b.id - a.id
   );
   el.incomeCount.textContent = items.length;
@@ -399,10 +407,10 @@ function renderIncomeHistory() {
 
 // ===== RENDER ALL =====
 function render() {
-  const expenses = getItemsForMonth("expenses");
-  const income = getItemsForMonth("income");
+  const expenses = getItems("expenses");
+  const income = getItems("income");
 
-  el.monthLabel.textContent = getMonthName(viewDate);
+  el.monthLabel.textContent = allTimeMode ? "All Time ⏳" : getMonthName(viewDate);
   populateYearSelect();
 
   const totalExp = expenses.reduce((s, e) => s + e.amount, 0);
@@ -430,7 +438,21 @@ el.navTabs.forEach((tab) => {
 
 // Totals bar segments also navigate to their page
 document.querySelectorAll(".total-seg").forEach((seg) => {
-  seg.addEventListener("click", () => switchPage(seg.dataset.page));
+  seg.addEventListener("click", () => {
+    if (seg.id === "allTimeToggle") return; // handled separately
+    switchPage(seg.dataset.page);
+  });
+});
+
+// ===== EVENTS: All-Time Toggle =====
+el.allTimeToggle.addEventListener("click", () => {
+  allTimeMode = !allTimeMode;
+  el.allTimeToggle.classList.toggle("active", allTimeMode);
+  el.allTimeValue.textContent = allTimeMode ? "ON" : "Off";
+  el.yearSelect.disabled = allTimeMode;
+  el.yearSelect.style.opacity = allTimeMode ? "0.4" : "1";
+  render();
+  showToast(allTimeMode ? "⏳ Showing ALL TIME totals" : "📅 Back to monthly view");
 });
 
 // ===== EVENTS: Chart Toggle =====
