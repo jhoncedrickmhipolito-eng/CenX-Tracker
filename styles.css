@@ -58,6 +58,85 @@ body {
 }
 
 /* ===== NAVIGATION BAR ===== */
+.totals-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.total-seg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.total-seg::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
+.seg-expense::before { background: var(--expense); }
+.seg-income::before { background: var(--income); }
+.seg-balance::before { background: var(--balance); }
+
+.total-seg:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.seg-expense:hover { border-color: var(--expense); }
+.seg-income:hover { border-color: var(--income); }
+.seg-balance:hover { border-color: var(--balance); }
+
+.seg-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.seg-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.seg-expense .seg-value { color: var(--expense); }
+.seg-income .seg-value { color: var(--income); }
+.seg-balance .seg-value { color: var(--balance); }
+
+@media (max-width: 560px) {
+  .totals-bar {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .total-seg {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 12px 16px;
+  }
+
+  .seg-value {
+    font-size: 1.15rem;
+  }
+}
+
 .main-nav {
   position: relative;
   display: flex;

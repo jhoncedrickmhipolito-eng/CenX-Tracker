@@ -426,6 +426,11 @@ el.navTabs.forEach((tab) => {
   tab.addEventListener("click", () => switchPage(tab.dataset.page));
 });
 
+// Totals bar segments also navigate to their page
+document.querySelectorAll(".total-seg").forEach((seg) => {
+  seg.addEventListener("click", () => switchPage(seg.dataset.page));
+});
+
 // ===== EVENTS: Chart Toggle =====
 // Main combined chart (top)
 document.getElementById("btnMonthly").addEventListener("click", () => {

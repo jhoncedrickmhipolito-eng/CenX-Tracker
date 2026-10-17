@@ -20,6 +20,22 @@
         </div>
       </div>
 
+      <!-- ===== TOTALS BAR (nav-style) ===== -->
+      <div class="totals-bar" id="totalsBar">
+        <button class="total-seg seg-expense" data-page="expenses">
+          <span class="seg-label">💸 Total Expenses</span>
+          <span class="seg-value" id="totalExpenses">₱0.00</span>
+        </button>
+        <button class="total-seg seg-income" data-page="income">
+          <span class="seg-label">💰 Total Income</span>
+          <span class="seg-value" id="totalIncome">₱0.00</span>
+        </button>
+        <button class="total-seg seg-balance" data-page="graph">
+          <span class="seg-label">⚖️ Balance</span>
+          <span class="seg-value" id="balance">₱0.00</span>
+        </button>
+      </div>
+
       <!-- ===== NAVIGATION BAR ===== -->
       <nav class="main-nav" id="mainNav">
         <button class="nav-tab active" data-page="expenses">💸 Expenses</button>
@@ -28,22 +44,6 @@
         <span class="nav-indicator" id="navIndicator"></span>
       </nav>
     </header>
-
-    <!-- ===== SUMMARY CARDS ===== -->
-    <section class="summary-cards">
-      <div class="card card-expense">
-        <span class="card-label">Total Expenses</span>
-        <span class="card-value" id="totalExpenses">₱0.00</span>
-      </div>
-      <div class="card card-income">
-        <span class="card-label">Total Income</span>
-        <span class="card-value" id="totalIncome">₱0.00</span>
-      </div>
-      <div class="card card-balance">
-        <span class="card-label">Balance</span>
-        <span class="card-value" id="balance">₱0.00</span>
-      </div>
-    </section>
 
     <main>
       <!-- ========== PAGE: EXPENSES ========== -->
