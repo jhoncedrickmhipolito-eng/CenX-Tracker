@@ -277,6 +277,32 @@ body {
   text-align: center;
 }
 
+/* ===== YEAR SELECTOR ===== */
+.year-select {
+  padding: 8px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  margin-left: 8px;
+}
+
+.year-select:hover,
+.year-select:focus {
+  border-color: var(--balance);
+  background: var(--bg);
+}
+
+.year-select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
 /* ===== SUMMARY CARDS ===== */
 .summary-cards {
   display: grid;

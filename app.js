@@ -61,6 +61,7 @@ const el = {
   categoryBreakdown: document.getElementById("categoryBreakdown"),
   categoryMonthLabel: document.getElementById("categoryMonthLabel"),
   clearMonth: document.getElementById("clearMonth"),
+  yearSelect: document.getElementById("yearSelect"),
   navTabs: document.querySelectorAll(".nav-tab"),
   navIndicator: document.getElementById("navIndicator"),
 };
@@ -402,6 +403,7 @@ function render() {
   const income = getItemsForMonth("income");
 
   el.monthLabel.textContent = getMonthName(viewDate);
+  populateYearSelect();
 
   const totalExp = expenses.reduce((s, e) => s + e.amount, 0);
   const totalInc = income.reduce((s, i) => s + i.amount, 0);
@@ -481,6 +483,29 @@ el.prevMonth.addEventListener("click", () => {
 
 el.nextMonth.addEventListener("click", () => {
   viewDate.setMonth(viewDate.getMonth() + 1);
+  render();
+});
+
+// ===== YEAR SELECTOR =====
+function populateYearSelect() {
+  const yearsSet = new Set();
+  yearsSet.add(viewDate.getFullYear());
+  db.expenses.forEach((e) => yearsSet.add(new Date(e.date + "T00:00:00").getFullYear()));
+  db.income.forEach((i) => yearsSet.add(new Date(i.date + "T00:00:00").getFullYear()));
+
+  // Add a few years around the current one so there's always a range
+  const cur = viewDate.getFullYear();
+  for (let y = cur - 5; y <= cur + 2; y++) yearsSet.add(y);
+
+  const years = [...yearsSet].sort((a, b) => b - a); // newest first
+
+  el.yearSelect.innerHTML = years
+    .map((y) => `<option value="${y}" ${y === viewDate.getFullYear() ? "selected" : ""}>📅 ${y}</option>`)
+    .join("");
+}
+
+el.yearSelect.addEventListener("change", (e) => {
+  viewDate.setFullYear(Number(e.target.value));
   render();
 });
 
