@@ -21,9 +21,23 @@ let db = loadData();
 
 // ===== STATE =====
 let viewDate = new Date();
-let currentFilter = "all";
-let chartMode = "monthly"; // "monthly" or "yearly"
+let chartMode = "monthly";
+let currentPage = "expenses";
 let mainChart = null;
+
+// ===== CATEGORIES =====
+const CATEGORIES = [
+  { value: "Food", label: "🍔 Food", color: "#f97316" },
+  { value: "GYM", label: "🏋️ GYM", color: "#8b5cf6" },
+  { value: "Gas", label: "⛽ Gas", color: "#eab308" },
+  { value: "P.N", label: "📌 P.N (Personal Needs)", color: "#ec4899" },
+  { value: "Transport", label: "🚌 Transport", color: "#06b6d4" },
+  { value: "Bills", label: "🧾 Bills", color: "#3b82f6" },
+  { value: "Shopping", label: "🛍️ Shopping", color: "#f43f5e" },
+  { value: "Health", label: "💊 Health", color: "#22c55e" },
+  { value: "Entertainment", label: "🎮 Entertainment", color: "#a855f7" },
+  { value: "Education", label: "📚 Education", color: "#14b8a6" },
+];
 
 // ===== DOM ELEMENTS =====
 const el = {
@@ -36,11 +50,15 @@ const el = {
   expenseForm: document.getElementById("expenseForm"),
   incomeForm: document.getElementById("incomeForm"),
   categoryGrid: document.getElementById("categoryGrid"),
-  selectAll: document.getElementById("selectAllCategories"),
+  expenseHistoryList: document.getElementById("expenseHistoryList"),
+  incomeHistoryList: document.getElementById("incomeHistoryList"),
+  expenseCount: document.getElementById("expenseCount"),
+  incomeCount: document.getElementById("incomeCount"),
   categoryBreakdown: document.getElementById("categoryBreakdown"),
-  historyList: document.getElementById("historyList"),
+  categoryMonthLabel: document.getElementById("categoryMonthLabel"),
   clearMonth: document.getElementById("clearMonth"),
-  tabs: document.querySelectorAll(".tab"),
+  navTabs: document.querySelectorAll(".nav-tab"),
+  navIndicator: document.getElementById("navIndicator"),
 };
 
 // ===== HELPERS =====
@@ -72,17 +90,94 @@ function showToast(msg, type = "success") {
   setTimeout(() => toast.remove(), 3000);
 }
 
+function esc(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function getCategoryColor(name) {
+  const c = CATEGORIES.find((x) => x.value === name);
+  return c ? c.color : "#ef4444";
+}
+
+// ===== CATEGORY CHIPS =====
+function buildCategoryGrid() {
+  el.categoryGrid.innerHTML =
+    CATEGORIES.map(
+      (cat) => `
+      <label class="category-chip">
+        <input type="checkbox" name="category" value="${cat.value}" />
+        <span>${cat.label}</span>
+      </label>`
+    ).join("") +
+    `
+    <label class="category-chip category-all">
+      <input type="checkbox" id="selectAllCategories" />
+      <span>✅ Select All</span>
+    </label>`;
+
+  document.getElementById("selectAllCategories").addEventListener("change", (e) => {
+    el.categoryGrid.querySelectorAll('input[name="category"]').forEach((cb) => {
+      cb.checked = e.target.checked;
+    });
+  });
+
+  el.categoryGrid.addEventListener("change", (e) => {
+    if (e.target.name === "category") {
+      const boxes = el.categoryGrid.querySelectorAll('input[name="category"]');
+      document.getElementById("selectAllCategories").checked = [...boxes].every((b) => b.checked);
+    }
+  });
+}
+
+// ===== NAVIGATION =====
+function switchPage(page) {
+  currentPage = page;
+
+  el.navTabs.forEach((tab) => {
+    tab.classList.toggle("active", tab.dataset.page === page);
+  });
+
+  document.querySelectorAll(".page").forEach((p) => {
+    p.classList.toggle("active", p.id === `page-${page}`);
+  });
+
+  // Re-render active page content
+  if (page === "graph") {
+    renderChart();
+    renderCategoryBreakdown();
+  } else if (page === "expenses") {
+    renderExpenseHistory();
+  } else if (page === "income") {
+    renderIncomeHistory();
+  }
+
+  moveNavIndicator();
+}
+
+function moveNavIndicator() {
+  const active = document.querySelector(".nav-tab.active");
+  if (!active || !el.navIndicator) return;
+  el.navIndicator.style.width = active.offsetWidth + "px";
+  el.navIndicator.style.transform = `translateX(${active.offsetLeft}px)`;
+}
+
 // ===== CHART =====
 function renderChart() {
   const ctx = document.getElementById("mainChart");
-  if (!ctx) return;
+  if (!ctx || currentPage !== "graph") return;
 
   let labels = [];
   let expenseData = [];
   let incomeData = [];
 
   if (chartMode === "monthly") {
-    // Show 12 months of the current viewing year
     const year = viewDate.getFullYear();
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     labels = monthNames;
@@ -91,18 +186,13 @@ function renderChart() {
 
     db.expenses.forEach((e) => {
       const d = new Date(e.date + "T00:00:00");
-      if (d.getFullYear() === year) {
-        expenseData[d.getMonth()] += e.amount;
-      }
+      if (d.getFullYear() === year) expenseData[d.getMonth()] += e.amount;
     });
     db.income.forEach((i) => {
       const d = new Date(i.date + "T00:00:00");
-      if (d.getFullYear() === year) {
-        incomeData[d.getMonth()] += i.amount;
-      }
+      if (d.getFullYear() === year) incomeData[d.getMonth()] += i.amount;
     });
   } else {
-    // Yearly: find all years that have data + current year
     const yearsSet = new Set();
     yearsSet.add(viewDate.getFullYear());
     db.expenses.forEach((e) => yearsSet.add(new Date(e.date + "T00:00:00").getFullYear()));
@@ -125,7 +215,9 @@ function renderChart() {
     });
   }
 
-  const chartConfig = {
+  if (mainChart) mainChart.destroy();
+
+  mainChart = new Chart(ctx, {
     type: "bar",
     data: {
       labels,
@@ -164,9 +256,7 @@ function renderChart() {
           borderWidth: 1,
           padding: 12,
           cornerRadius: 8,
-          callbacks: {
-            label: (ctx) => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`,
-          },
+          callbacks: { label: (c) => `${c.dataset.label}: ${fmt(c.parsed.y)}` },
         },
       },
       scales: {
@@ -179,60 +269,26 @@ function renderChart() {
           ticks: {
             color: "#94a3b8",
             font: { size: 12 },
-            callback: (v) => {
-              if (v >= 1000) return "₱" + (v / 1000).toFixed(0) + "k";
-              return "₱" + v;
-            },
+            callback: (v) => (v >= 1000 ? "₱" + (v / 1000).toFixed(0) + "k" : "₱" + v),
           },
         },
       },
     },
-  };
-
-  if (mainChart) {
-    mainChart.destroy();
-  }
-  mainChart = new Chart(ctx, chartConfig);
+  });
 }
 
-// ===== RENDER =====
-function render() {
+// ===== CATEGORY BREAKDOWN (Graph page) =====
+function renderCategoryBreakdown() {
+  if (currentPage !== "graph") return;
   const expenses = getItemsForMonth("expenses");
-  const income = getItemsForMonth("income");
+  el.categoryMonthLabel.textContent = getMonthName(viewDate);
 
-  // Month label
-  el.monthLabel.textContent = getMonthName(viewDate);
-
-  // Summary
-  const totalExp = expenses.reduce((s, e) => s + e.amount, 0);
-  const totalInc = income.reduce((s, e) => s + e.amount, 0);
-  const bal = totalInc - totalExp;
-
-  el.totalExpenses.textContent = fmt(totalExp);
-  el.totalIncome.textContent = fmt(totalInc);
-  el.balance.textContent = fmt(bal);
-  el.balance.style.color = bal < 0 ? "var(--expense)" : "var(--balance)";
-
-  renderCategoryBreakdown(expenses);
-  renderHistory();
-  renderChart();
-}
-
-function renderCategoryBreakdown(expenses) {
   if (expenses.length === 0) {
     el.categoryBreakdown.innerHTML = `<p class="empty-msg">No expenses yet this month.</p>`;
     return;
   }
 
-  // Sum per category
   const totals = {};
-  const colors = {
-    Food: "#f97316",
-    GYM: "#8b5cf6",
-    Gas: "#eab308",
-    "P.N": "#ec4899",
-  };
-
   expenses.forEach((exp) => {
     exp.categories.forEach((cat) => {
       totals[cat] = (totals[cat] || 0) + exp.amount;
@@ -242,17 +298,16 @@ function renderCategoryBreakdown(expenses) {
   const grandTotal = expenses.reduce((s, e) => s + e.amount, 0);
   const maxAmount = Math.max(...Object.values(totals));
 
-  let html = "";
-  Object.entries(totals)
+  el.categoryBreakdown.innerHTML = Object.entries(totals)
     .sort((a, b) => b[1] - a[1])
-    .forEach(([cat, amount]) => {
+    .map(([cat, amount]) => {
       const pct = grandTotal ? ((amount / grandTotal) * 100).toFixed(1) : 0;
       const barWidth = maxAmount ? (amount / maxAmount) * 100 : 0;
-      const color = colors[cat] || "var(--expense)";
-      html += `
+      const color = getCategoryColor(cat);
+      return `
         <div class="breakdown-item">
           <div class="breakdown-row">
-            <span class="breakdown-name">${cat}</span>
+            <span class="breakdown-name">${esc(cat)}</span>
             <span class="breakdown-amount" style="color:${color}">${fmt(amount)}</span>
           </div>
           <div class="breakdown-bar-bg">
@@ -261,70 +316,89 @@ function renderCategoryBreakdown(expenses) {
           <div class="breakdown-row">
             <span style="color:var(--text-dim);font-size:0.8rem">${pct}% of total</span>
           </div>
-        </div>
-      `;
-    });
-
-  el.categoryBreakdown.innerHTML = html;
+        </div>`;
+    })
+    .join("");
 }
 
-function renderHistory() {
-  const expenses = getItemsForMonth("expenses").map((e) => ({ ...e, type: "expense" }));
-  const income = getItemsForMonth("income").map((i) => ({ ...i, type: "income" }));
-
-  let all = [...expenses, ...income];
-  if (currentFilter !== "all") {
-    all = all.filter((item) => item.type === currentFilter);
-  }
-
-  // Sort by date, newest first
-  all.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
-
-  if (all.length === 0) {
-    el.historyList.innerHTML = `<p class="empty-msg">No transactions this month.</p>`;
-    return;
-  }
-
-  el.historyList.innerHTML = all
-    .map(
-      (item) => `
-    <div class="history-item" data-id="${item.id}" data-type="${item.type}">
-      <div class="history-icon ${item.type}">
-        ${item.type === "expense" ? "💸" : "💰"}
+// ===== HISTORIES =====
+function historyItemHTML(item, type) {
+  return `
+    <div class="history-item" data-id="${item.id}" data-type="${type}">
+      <div class="history-icon ${type}">
+        ${type === "expense" ? "💸" : "💰"}
       </div>
       <div class="history-details">
         <div class="history-desc">${esc(item.description)}</div>
         <div class="history-meta">
           <span>📅 ${formatDate(item.date)}</span>
-          ${item.type === "expense" && item.categories?.length ? `
-            <span class="history-tags">
-              ${item.categories.map((c) => `<span class="history-tag">${c}</span>`).join("")}
-            </span>
-          ` : ""}
+          ${type === "expense" && item.categories?.length
+            ? `<span class="history-tags">${item.categories
+                .map((c) => `<span class="history-tag" style="color:${getCategoryColor(c)}">${esc(c)}</span>`)
+                .join("")}</span>`
+            : ""}
         </div>
       </div>
-      <div class="history-amount ${item.type}">
-        ${item.type === "expense" ? "-" : "+"}${fmt(item.amount)}
+      <div class="history-amount ${type}">
+        ${type === "expense" ? "-" : "+"}${fmt(item.amount)}
       </div>
       <button class="history-delete" title="Delete">✕</button>
-    </div>
-  `
-    )
-    .join("");
+    </div>`;
 }
 
-function esc(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
+function renderExpenseHistory() {
+  const items = getItemsForMonth("expenses").sort(
+    (a, b) => b.date.localeCompare(a.date) || b.id - a.id
+  );
+  el.expenseCount.textContent = items.length;
+  el.expenseHistoryList.innerHTML =
+    items.length === 0
+      ? `<p class="empty-msg">No expenses yet this month.</p>`
+      : items.map((i) => historyItemHTML(i, "expense")).join("");
 }
 
-function formatDate(dateStr) {
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+function renderIncomeHistory() {
+  const items = getItemsForMonth("income").sort(
+    (a, b) => b.date.localeCompare(a.date) || b.id - a.id
+  );
+  el.incomeCount.textContent = items.length;
+  el.incomeHistoryList.innerHTML =
+    items.length === 0
+      ? `<p class="empty-msg">No income yet this month.</p>`
+      : items.map((i) => historyItemHTML(i, "income")).join("");
 }
 
-// ===== EVENT: Chart Toggle (Monthly / Yearly) =====
+// ===== RENDER ALL =====
+function render() {
+  const expenses = getItemsForMonth("expenses");
+  const income = getItemsForMonth("income");
+
+  el.monthLabel.textContent = getMonthName(viewDate);
+
+  const totalExp = expenses.reduce((s, e) => s + e.amount, 0);
+  const totalInc = income.reduce((s, i) => s + i.amount, 0);
+  const bal = totalInc - totalExp;
+
+  el.totalExpenses.textContent = fmt(totalExp);
+  el.totalIncome.textContent = fmt(totalInc);
+  el.balance.textContent = fmt(bal);
+  el.balance.style.color = bal < 0 ? "var(--expense)" : "var(--balance)";
+
+  renderExpenseHistory();
+  renderIncomeHistory();
+
+  if (currentPage === "graph") {
+    renderChart();
+    renderCategoryBreakdown();
+  }
+}
+
+// ===== EVENTS: Navigation =====
+el.navTabs.forEach((tab) => {
+  tab.addEventListener("click", () => switchPage(tab.dataset.page));
+});
+
+// ===== EVENTS: Chart Toggle =====
 document.getElementById("btnMonthly").addEventListener("click", () => {
   chartMode = "monthly";
   document.getElementById("btnMonthly").classList.add("active");
@@ -339,7 +413,7 @@ document.getElementById("btnYearly").addEventListener("click", () => {
   renderChart();
 });
 
-// ===== EVENT: Month Navigation =====
+// ===== EVENTS: Month Navigation =====
 el.prevMonth.addEventListener("click", () => {
   viewDate.setMonth(viewDate.getMonth() - 1);
   render();
@@ -350,58 +424,35 @@ el.nextMonth.addEventListener("click", () => {
   render();
 });
 
-// ===== EVENT: Select All Categories =====
-el.selectAll.addEventListener("change", () => {
-  const checkboxes = el.categoryGrid.querySelectorAll('input[name="category"]');
-  checkboxes.forEach((cb) => {
-    cb.checked = el.selectAll.checked;
-  });
-});
-
-// Keep "Select All" in sync when individual chips change
-el.categoryGrid.addEventListener("change", (e) => {
-  if (e.target.name === "category") {
-    const checkboxes = el.categoryGrid.querySelectorAll('input[name="category"]');
-    const allChecked = [...checkboxes].every((cb) => cb.checked);
-    el.selectAll.checked = allChecked;
-  }
-});
-
-// ===== EVENT: Expense Form =====
+// ===== EVENTS: Forms =====
 el.expenseForm.addEventListener("submit", (e) => {
   e.preventDefault();
 
   const date = document.getElementById("expenseDate").value;
   const amount = parseFloat(document.getElementById("expenseAmount").value);
   const description = document.getElementById("expenseDescription").value.trim();
-  const categories = [...el.categoryGrid.querySelectorAll('input[name="category"]:checked')].map(
-    (cb) => cb.value
-  );
+  const categories = [
+    ...el.categoryGrid.querySelectorAll('input[name="category"]:checked'),
+  ].map((cb) => cb.value);
 
   if (categories.length === 0) {
     showToast("Please select at least one category!", "error");
     return;
   }
 
-  db.expenses.push({
-    id: Date.now(),
-    date,
-    amount,
-    description,
-    categories,
-  });
-
+  db.expenses.push({ id: Date.now(), date, amount, description, categories });
   saveData(db);
-  el.expenseForm.reset();
-  el.selectAll.checked = false;
 
-  // Jump to expense's month
+  el.expenseForm.reset();
+  document.getElementById("expenseDate").value = date;
+  const selAll = document.getElementById("selectAllCategories");
+  if (selAll) selAll.checked = false;
+
   viewDate = new Date(date + "T00:00:00");
   render();
   showToast("✅ Expense added!");
 });
 
-// ===== EVENT: Income Form =====
 el.incomeForm.addEventListener("submit", (e) => {
   e.preventDefault();
 
@@ -409,47 +460,37 @@ el.incomeForm.addEventListener("submit", (e) => {
   const amount = parseFloat(document.getElementById("incomeAmount").value);
   const description = document.getElementById("incomeDescription").value.trim();
 
-  db.income.push({
-    id: Date.now(),
-    date,
-    amount,
-    description,
-  });
-
+  db.income.push({ id: Date.now(), date, amount, description });
   saveData(db);
+
   el.incomeForm.reset();
+  document.getElementById("incomeDate").value = date;
 
   viewDate = new Date(date + "T00:00:00");
   render();
   showToast("💰 Income added!");
 });
 
-// ===== EVENT: Filter Tabs =====
-el.tabs.forEach((tab) => {
-  tab.addEventListener("click", () => {
-    el.tabs.forEach((t) => t.classList.remove("active"));
-    tab.classList.add("active");
-    currentFilter = tab.dataset.filter;
-    renderHistory();
+// ===== EVENTS: Delete =====
+function attachDeleteHandler(listEl) {
+  listEl.addEventListener("click", (e) => {
+    const btn = e.target.closest(".history-delete");
+    if (!btn) return;
+
+    const item = btn.closest(".history-item");
+    const id = Number(item.dataset.id);
+    const type = item.dataset.type;
+
+    db[type] = db[type].filter((x) => x.id !== id);
+    saveData(db);
+    render();
+    showToast("🗑️ Deleted!", "error");
   });
-});
+}
+attachDeleteHandler(el.expenseHistoryList);
+attachDeleteHandler(el.incomeHistoryList);
 
-// ===== EVENT: Delete Transaction =====
-el.historyList.addEventListener("click", (e) => {
-  const btn = e.target.closest(".history-delete");
-  if (!btn) return;
-
-  const item = btn.closest(".history-item");
-  const id = Number(item.dataset.id);
-  const type = item.dataset.type;
-
-  db[type] = db[type].filter((x) => x.id !== id);
-  saveData(db);
-  render();
-  showToast("🗑️ Deleted!", "error");
-});
-
-// ===== EVENT: Clear Month =====
+// ===== EVENTS: Clear Month =====
 el.clearMonth.addEventListener("click", () => {
   const key = getMonthKey(viewDate);
   const label = getMonthName(viewDate);
@@ -465,10 +506,15 @@ el.clearMonth.addEventListener("click", () => {
 
 // ===== INIT =====
 function init() {
+  buildCategoryGrid();
+
   const today = new Date().toISOString().split("T")[0];
   document.getElementById("expenseDate").value = today;
   document.getElementById("incomeDate").value = today;
+
   render();
+  requestAnimationFrame(moveNavIndicator);
 }
 
+window.addEventListener("resize", moveNavIndicator);
 init();

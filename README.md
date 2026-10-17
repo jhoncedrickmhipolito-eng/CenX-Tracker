@@ -1,14 +1,15 @@
-# 💸 Expenses Tracker
+# 💸 ExpensesTracker
 
 A simple and intuitive expense tracking application to monitor your spending habits and manage your budget.
 
 ## Features
 
-- ➕ Add, edit, and delete expenses
-- 📊 Visual spending summaries and charts
-- 🗂️ Categorize expenses (food, transport, bills, etc.)
-- 📅 Filter by date range
-- 💾 Local storage / database persistence
+- ➕ Add and delete expenses & income
+- 📊 Monthly and Yearly graphs (Chart.js)
+- 🗂️ 10 expense categories: Food, GYM, Gas, P.N (Personal Needs), Transport, Bills, Shopping, Health, Entertainment, Education — pick one or more
+- 📅 Month-by-month navigation
+- 🧭 Navigation bar: Expenses / Income / Graph pages
+- 💾 Local storage persistence
 
 ## Tech Stack
 
