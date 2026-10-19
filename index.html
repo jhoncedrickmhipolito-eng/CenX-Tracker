@@ -236,6 +236,41 @@
     </div>
   </div>
 
+  <!-- ===== EDIT MODAL ===== -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal edit-modal">
+      <div class="modal-icon" id="editModalIcon">✏️</div>
+      <h3 id="editModalTitle">Edit Expense</h3>
+      <p id="editModalDesc">Fix the details and save your changes.</p>
+
+      <div class="edit-form">
+        <div class="form-group">
+          <label for="editDate">Date</label>
+          <input type="date" id="editDate" />
+        </div>
+        <div class="form-group">
+          <label for="editAmount">Amount (₱)</label>
+          <input type="number" id="editAmount" placeholder="0.00" step="0.01" min="0" />
+        </div>
+        <div class="form-group">
+          <label for="editDescription">Description <small>(optional)</small></label>
+          <input type="text" id="editDescription" placeholder="Description" />
+        </div>
+        <div class="form-group" id="editCategoryGroup">
+          <label>Categories <small>(select one or more)</small></label>
+          <div class="category-grid" id="editCategoryGrid"></div>
+        </div>
+      </div>
+
+      <p class="pin-error" id="editError"></p>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="editCancel">Cancel</button>
+        <button class="btn btn-income" id="editSave">💾 Save Changes</button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

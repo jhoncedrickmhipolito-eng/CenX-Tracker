@@ -379,7 +379,10 @@ function historyItemHTML(item, type) {
       <div class="history-amount ${type}">
         ${type === "expense" ? "-" : "+"}${fmt(item.amount)}
       </div>
-      <button class="history-delete" title="Delete">✕</button>
+      <div class="history-actions">
+        <button class="history-edit" title="Edit">✏️</button>
+        <button class="history-delete" title="Delete">✕</button>
+      </div>
     </div>`;
 }
 
@@ -576,6 +579,146 @@ el.incomeForm.addEventListener("submit", (e) => {
   viewDate = new Date(date + "T00:00:00");
   render();
   showToast("💰 Income added!");
+});
+
+// ===== EDIT MODAL =====
+const editModal = document.getElementById("editModal");
+const editDate = document.getElementById("editDate");
+const editAmount = document.getElementById("editAmount");
+const editDescription = document.getElementById("editDescription");
+const editCategoryGroup = document.getElementById("editCategoryGroup");
+const editCategoryGrid = document.getElementById("editCategoryGrid");
+const editError = document.getElementById("editError");
+const editTitle = document.getElementById("editModalTitle");
+const editDesc = document.getElementById("editModalDesc");
+const editIcon = document.getElementById("editModalIcon");
+
+let editing = null; // { type, id }
+
+function buildEditCategoryGrid(selected = []) {
+  editCategoryGrid.innerHTML =
+    CATEGORIES.map(
+      (cat) => `
+      <label class="category-chip">
+        <input type="checkbox" name="editcat" value="${cat.value}" ${
+        selected.includes(cat.value) ? "checked" : ""
+      } />
+        <span>${cat.label}</span>
+      </label>`
+    ).join("") +
+    `
+    <label class="category-chip category-all">
+      <input type="checkbox" id="editSelectAll" ${
+        selected.length === CATEGORIES.length ? "checked" : ""
+      } />
+      <span>✅ Select All</span>
+    </label>`;
+
+  document.getElementById("editSelectAll").addEventListener("change", (e) => {
+    editCategoryGrid.querySelectorAll('input[name="editcat"]').forEach((cb) => {
+      cb.checked = e.target.checked;
+    });
+  });
+
+  editCategoryGrid.addEventListener("change", (e) => {
+    if (e.target.name === "editcat") {
+      const boxes = editCategoryGrid.querySelectorAll('input[name="editcat"]');
+      document.getElementById("editSelectAll").checked = [...boxes].every((b) => b.checked);
+    }
+  });
+}
+
+function openEditModal(type, id) {
+  const item = db[type].find((x) => x.id === id);
+  if (!item) return;
+
+  editing = { type, id };
+  editError.textContent = "";
+
+  editDate.value = item.date;
+  editAmount.value = item.amount;
+  editDescription.value = item.description || "";
+
+  if (type === "expense") {
+    editIcon.textContent = "✏️";
+    editTitle.textContent = "Edit Expense";
+    editDesc.textContent = "Fix the amount, date, or categories.";
+    editCategoryGroup.style.display = "block";
+    buildEditCategoryGrid(item.categories || []);
+  } else {
+    editIcon.textContent = "✏️";
+    editTitle.textContent = "Edit Income";
+    editDesc.textContent = "Fix the amount, date, or description.";
+    editCategoryGroup.style.display = "none";
+  }
+
+  editModal.classList.add("open");
+  setTimeout(() => editAmount.focus(), 60);
+}
+
+function closeEditModal() {
+  editModal.classList.remove("open");
+  editing = null;
+}
+
+document.getElementById("editSave").addEventListener("click", () => {
+  if (!editing) return;
+
+  const amount = parseFloat(editAmount.value);
+  const date = editDate.value;
+  const description = editDescription.value.trim();
+
+  if (!date || isNaN(amount) || amount < 0) {
+    editError.textContent = "Please enter a valid date and amount.";
+    return;
+  }
+
+  let categories = [];
+  if (editing.type === "expense") {
+    categories = [...editCategoryGrid.querySelectorAll('input[name="editcat"]:checked')].map(
+      (cb) => cb.value
+    );
+    if (categories.length === 0) {
+      editError.textContent = "Please select at least one category.";
+      return;
+    }
+  }
+
+  const idx = db[editing.type].findIndex((x) => x.id === editing.id);
+  if (idx === -1) return;
+
+  db[editing.type][idx] = {
+    ...db[editing.type][idx],
+    date,
+    amount,
+    description,
+    ...(editing.type === "expense" ? { categories } : {}),
+  };
+
+  saveData(db);
+  closeEditModal();
+  render();
+  showToast("✅ Record updated! Totals recalculated.");
+});
+
+document.getElementById("editCancel").addEventListener("click", closeEditModal);
+editModal.addEventListener("click", (e) => {
+  if (e.target === editModal) closeEditModal();
+});
+
+// Open edit modal from history items
+el.expenseHistoryList.addEventListener("click", (e) => {
+  const btn = e.target.closest(".history-edit");
+  if (!btn) return;
+  const item = btn.closest(".history-item");
+  openEditModal("expense", Number(item.dataset.id));
+});
+
+el.incomeHistoryList.addEventListener("click", (e) => {
+  const btn = e.target.closest(".history-edit");
+  if (!btn) return;
+  const item = btn.closest(".history-item");
+  openEditModal("income", Number(item.dataset.id));
 });
 
 // ===== EVENTS: Delete (PIN Protected) =====
@@ -821,7 +964,10 @@ pinModal.addEventListener("click", (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && pinModal.classList.contains("open")) closePinModal();
+  if (e.key === "Escape") {
+    if (editModal.classList.contains("open")) closeEditModal();
+    else if (pinModal.classList.contains("open")) closePinModal();
+  }
 });
 
 // Entry point used by delete/clear actions
