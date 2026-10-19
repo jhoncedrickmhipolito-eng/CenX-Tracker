@@ -629,7 +629,8 @@ function buildEditCategoryGrid(selected = []) {
 }
 
 function openEditModal(type, id) {
-  const item = db[type].find((x) => x.id === id);
+  const dbKey = type === "expense" ? "expenses" : "income";
+  const item = db[dbKey].find((x) => x.id === id);
   if (!item) return;
 
   editing = { type, id };
@@ -684,11 +685,12 @@ document.getElementById("editSave").addEventListener("click", () => {
     }
   }
 
-  const idx = db[editing.type].findIndex((x) => x.id === editing.id);
+  const dbKey = editing.type === "expense" ? "expenses" : "income";
+  const idx = db[dbKey].findIndex((x) => x.id === editing.id);
   if (idx === -1) return;
 
-  db[editing.type][idx] = {
-    ...db[editing.type][idx],
+  db[dbKey][idx] = {
+    ...db[dbKey][idx],
     date,
     amount,
     description,
@@ -729,20 +731,27 @@ function attachDeleteHandler(listEl) {
 
     const item = btn.closest(".history-item");
     const id = Number(item.dataset.id);
-    const type = item.dataset.type;
+    const type = item.dataset.type; // "expense" | "income"
+    const dbKey = type === "expense" ? "expenses" : "income";
 
-    const record = db[type].find((x) => x.id === id);
+    const record = db[dbKey].find((x) => x.id === id);
+    if (!record) return;
+
     const label =
       type === "expense"
         ? `${fmt(record.amount)} — ${(record.categories || []).join(", ") || record.description || "Expense"}`
         : `${fmt(record.amount)} — ${record.description || "Income"}`;
 
-    requestPin("delete", () => {
-      db[type] = db[type].filter((x) => x.id !== id);
-      saveData(db);
-      render();
-      showToast("🗑️ Deleted! Totals updated.", "error");
-    }, `Remove: ${label}`);
+    requestPin(
+      "delete",
+      () => {
+        db[dbKey] = db[dbKey].filter((x) => x.id !== id);
+        saveData(db);
+        render();
+        showToast("🗑️ Deleted! Totals updated.", "error");
+      },
+      `Remove: ${label}`
+    );
   });
 }
 attachDeleteHandler(el.expenseHistoryList);
