@@ -203,8 +203,37 @@
     <!-- ===== FOOTER ===== -->
     <footer class="footer">
       <p>💾 Data saved locally in your browser</p>
-      <button id="clearMonth" class="btn btn-danger">🗑️ Clear This Month</button>
+      <div class="footer-actions">
+        <button id="changePin" class="btn btn-ghost">🔑 Change PIN</button>
+        <button id="clearMonth" class="btn btn-danger">🗑️ Clear This Month</button>
+      </div>
     </footer>
+  </div>
+
+  <!-- ===== PIN MODAL ===== -->
+  <div class="modal-overlay" id="pinModal">
+    <div class="modal">
+      <div class="modal-icon" id="pinModalIcon">🔒</div>
+      <h3 id="pinModalTitle">Enter PIN</h3>
+      <p id="pinModalDesc">Enter your 4-digit PIN to confirm deletion.</p>
+
+      <div class="pin-inputs" id="pinInputs">
+        <input type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*" class="pin-box" />
+        <input type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*" class="pin-box" />
+        <input type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*" class="pin-box" />
+        <input type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*" class="pin-box" />
+      </div>
+
+      <p class="pin-error" id="pinError"></p>
+      <p class="pin-hint" id="pinHint"></p>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="pinCancel">Cancel</button>
+        <button class="btn btn-primary" id="pinConfirm">Confirm</button>
+      </div>
+
+      <button class="pin-link" id="pinForgot">🔑 Forgot PIN? Reset it</button>
+    </div>
   </div>
 
   <script src="app.js"></script>

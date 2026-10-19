@@ -578,7 +578,7 @@ el.incomeForm.addEventListener("submit", (e) => {
   showToast("💰 Income added!");
 });
 
-// ===== EVENTS: Delete =====
+// ===== EVENTS: Delete (PIN Protected) =====
 function attachDeleteHandler(listEl) {
   listEl.addEventListener("click", (e) => {
     const btn = e.target.closest(".history-delete");
@@ -588,28 +588,246 @@ function attachDeleteHandler(listEl) {
     const id = Number(item.dataset.id);
     const type = item.dataset.type;
 
-    db[type] = db[type].filter((x) => x.id !== id);
-    saveData(db);
-    render();
-    showToast("🗑️ Deleted!", "error");
+    const record = db[type].find((x) => x.id === id);
+    const label =
+      type === "expense"
+        ? `${fmt(record.amount)} — ${(record.categories || []).join(", ") || record.description || "Expense"}`
+        : `${fmt(record.amount)} — ${record.description || "Income"}`;
+
+    requestPin("delete", () => {
+      db[type] = db[type].filter((x) => x.id !== id);
+      saveData(db);
+      render();
+      showToast("🗑️ Deleted! Totals updated.", "error");
+    }, `Remove: ${label}`);
   });
 }
 attachDeleteHandler(el.expenseHistoryList);
 attachDeleteHandler(el.incomeHistoryList);
 
-// ===== EVENTS: Clear Month =====
+// ===== EVENTS: Clear Month (PIN Protected) =====
 el.clearMonth.addEventListener("click", () => {
   const key = getMonthKey(viewDate);
-  const label = getMonthName(viewDate);
+  const label = allTimeMode ? "ALL transactions (All Time)" : getMonthName(viewDate);
 
-  if (!confirm(`Delete ALL transactions for ${label}?`)) return;
-
-  db.expenses = db.expenses.filter((e) => !e.date.startsWith(key));
-  db.income = db.income.filter((i) => !i.date.startsWith(key));
-  saveData(db);
-  render();
-  showToast("🗑️ Month cleared!", "error");
+  requestPin("delete", () => {
+    if (allTimeMode) {
+      db.expenses = [];
+      db.income = [];
+    } else {
+      db.expenses = db.expenses.filter((e) => !e.date.startsWith(key));
+      db.income = db.income.filter((i) => !i.date.startsWith(key));
+    }
+    saveData(db);
+    render();
+    showToast("🗑️ Cleared! Totals updated.", "error");
+  }, `Clear ${label}`);
 });
+
+// ===== EVENTS: Change PIN =====
+document.getElementById("changePin").addEventListener("click", () => {
+  openPinModal("create", () => showToast("🔑 PIN updated!"), "Set a new 4-digit PIN");
+});
+
+// ===== PIN SYSTEM =====
+const PIN_KEY = "cenx-pin-hash";
+let pinMode = "verify"; // "create" | "verify"
+let pinCallback = null;
+let confirmPinBuffer = ""; // used while creating a PIN
+
+// Simple non-cryptographic hash (good enough for local PIN gate)
+function hashPin(pin) {
+  let h1 = 0x811c9dc5;
+  let h2 = 0x1000193;
+  const salted = "CenX::" + pin + "::tracker";
+  for (let i = 0; i < salted.length; i++) {
+    h1 ^= salted.charCodeAt(i);
+    h1 = Math.imul(h1, 0x01000193) >>> 0;
+    h2 = (Math.imul(h2 ^ salted.charCodeAt(i), 0x85ebca6b) + i) >>> 0;
+  }
+  return (h1 >>> 0).toString(16) + (h2 >>> 0).toString(16);
+}
+
+function getSavedPin() {
+  return localStorage.getItem(PIN_KEY);
+}
+
+function savePin(pin) {
+  localStorage.setItem(PIN_KEY, hashPin(pin));
+}
+
+function clearPinStorage() {
+  localStorage.removeItem(PIN_KEY);
+}
+
+const pinModal = document.getElementById("pinModal");
+const pinInputs = document.getElementById("pinInputs");
+const pinBoxes = [...pinInputs.querySelectorAll(".pin-box")];
+const pinError = document.getElementById("pinError");
+const pinHint = document.getElementById("pinHint");
+const pinTitle = document.getElementById("pinModalTitle");
+const pinDesc = document.getElementById("pinModalDesc");
+const pinIcon = document.getElementById("pinModalIcon");
+
+function openPinModal(mode, callback, description) {
+  pinMode = mode;
+  pinCallback = callback;
+  confirmPinBuffer = "";
+
+  pinError.textContent = "";
+  pinHint.textContent = "";
+  pinInputs.classList.remove("error", "success");
+  pinBoxes.forEach((b) => (b.value = ""));
+
+  if (mode === "create") {
+    pinIcon.textContent = "🔑";
+    pinTitle.textContent = "Set Your PIN";
+    pinDesc.textContent =
+      description || "Create a 4-digit PIN. You'll need it to delete expenses or income.";
+    pinHint.textContent = "This PIN will be saved on this device.";
+  } else {
+    const hasPin = !!getSavedPin();
+    pinIcon.textContent = hasPin ? "🔒" : "🔑";
+    pinTitle.textContent = hasPin ? "Enter PIN" : "Create Your PIN";
+    pinDesc.textContent = hasPin
+      ? description || "Enter your 4-digit PIN to confirm this action."
+      : "No PIN set yet. Create a 4-digit PIN to protect your deletions.";
+  }
+
+  pinModal.classList.add("open");
+  setTimeout(() => pinBoxes[0].focus(), 60);
+}
+
+function closePinModal() {
+  pinModal.classList.remove("open");
+  pinCallback = null;
+  confirmPinBuffer = "";
+}
+
+function getPinValue() {
+  return pinBoxes.map((b) => b.value).join("");
+}
+
+function handlePinConfirm() {
+  const pin = getPinValue();
+
+  if (pin.length !== 4) {
+    showPinError("Please enter all 4 digits.");
+    return;
+  }
+
+  const saved = getSavedPin();
+
+  // No PIN stored yet → this is the first-time setup
+  if (!saved) {
+    savePin(pin);
+    pinInputs.classList.add("success");
+    pinHint.textContent = "PIN saved! Confirming...";
+    setTimeout(() => {
+      closePinModal();
+      if (pinCallback) pinCallback();
+    }, 550);
+    return;
+  }
+
+  // "Create / change" mode → require old PIN first, then ask for new one
+  if (pinMode === "create") {
+    if (hashPin(pin) === saved) {
+      pinMode = "create-new";
+      pinIcon.textContent = "✨";
+      pinTitle.textContent = "Enter New PIN";
+      pinDesc.textContent = "Old PIN accepted. Now enter your new 4-digit PIN.";
+      pinHint.textContent = "";
+      pinInputs.classList.remove("success");
+      pinBoxes.forEach((b) => (b.value = ""));
+      pinBoxes[0].focus();
+    } else {
+      showPinError("Wrong PIN. Try again.");
+    }
+    return;
+  }
+
+  if (pinMode === "create-new") {
+    savePin(pin);
+    pinInputs.classList.add("success");
+    pinHint.textContent = "New PIN saved!";
+    setTimeout(() => {
+      closePinModal();
+      if (pinCallback) pinCallback();
+    }, 550);
+    return;
+  }
+
+  // Verify mode
+  if (hashPin(pin) === saved) {
+    pinInputs.classList.add("success");
+    pinHint.textContent = "PIN correct ✓";
+    setTimeout(() => {
+      closePinModal();
+      if (pinCallback) pinCallback();
+    }, 350);
+  } else {
+    showPinError("Wrong PIN. Try again.");
+  }
+}
+
+function showPinError(msg) {
+  pinError.textContent = msg;
+  pinInputs.classList.remove("error");
+  void pinInputs.offsetWidth; // restart animation
+  pinInputs.classList.add("error");
+  pinBoxes.forEach((b) => (b.value = ""));
+  pinBoxes[0].focus();
+}
+
+// PIN box interactions
+pinBoxes.forEach((box, i) => {
+  box.addEventListener("input", () => {
+    box.value = box.value.replace(/\D/g, "").slice(0, 1);
+    pinError.textContent = "";
+    pinInputs.classList.remove("error");
+    if (box.value && i < pinBoxes.length - 1) pinBoxes[i + 1].focus();
+    if (getPinValue().length === 4) setTimeout(handlePinConfirm, 120);
+  });
+
+  box.addEventListener("keydown", (e) => {
+    if (e.key === "Backspace" && !box.value && i > 0) pinBoxes[i - 1].focus();
+  });
+
+  box.addEventListener("paste", (e) => {
+    e.preventDefault();
+    const data = (e.clipboardData.getData("text") || "").replace(/\D/g, "").slice(0, 4);
+    data.split("").forEach((ch, idx) => {
+      if (pinBoxes[idx]) pinBoxes[idx].value = ch;
+    });
+    if (data.length === 4) setTimeout(handlePinConfirm, 120);
+    else pinBoxes[Math.min(data.length, 3)].focus();
+  });
+});
+
+// Modal buttons
+document.getElementById("pinConfirm").addEventListener("click", handlePinConfirm);
+document.getElementById("pinCancel").addEventListener("click", closePinModal);
+document.getElementById("pinForgot").addEventListener("click", () => {
+  if (confirm("Reset your PIN? Anyone with access to this device will be able to delete records.")) {
+    clearPinStorage();
+    pinMode = "create";
+    openPinModal("create", () => showToast("🔑 New PIN saved!"), "Set a new 4-digit PIN");
+  }
+});
+
+pinModal.addEventListener("click", (e) => {
+  if (e.target === pinModal) closePinModal();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && pinModal.classList.contains("open")) closePinModal();
+});
+
+// Entry point used by delete/clear actions
+function requestPin(mode, callback, description) {
+  openPinModal(mode, callback, description);
+}
 
 // ===== INIT =====
 function init() {

@@ -836,6 +836,175 @@ body {
   gap: 12px;
 }
 
+/* ===== FOOTER ACTIONS ===== */
+.footer-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  width: auto;
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.btn-ghost:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+
+.btn-primary {
+  background: var(--balance);
+  color: #fff;
+  width: auto;
+  padding: 12px 28px;
+}
+
+/* ===== PIN MODAL ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modal-overlay.open {
+  display: flex;
+  animation: fadeIn 0.25s ease;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 32px 28px;
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  animation: modalIn 0.3s ease;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-icon {
+  font-size: 2.6rem;
+  margin-bottom: 10px;
+}
+
+.modal h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.modal p {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.pin-inputs {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 24px 0 8px;
+}
+
+.pin-box {
+  width: 52px;
+  height: 58px;
+  text-align: center;
+  font-size: 1.7rem;
+  font-weight: 700;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.pin-box:focus {
+  border-color: var(--balance);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+.pin-inputs.error .pin-box {
+  border-color: var(--expense);
+  animation: shake 0.4s;
+}
+
+.pin-inputs.success .pin-box {
+  border-color: var(--income);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+.pin-error {
+  color: var(--expense);
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-height: 20px;
+  margin-top: 6px;
+}
+
+.pin-hint {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  min-height: 18px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.modal-actions .btn {
+  flex: 1;
+}
+
+.pin-link {
+  background: none;
+  border: none;
+  color: var(--balance);
+  font-size: 0.82rem;
+  margin-top: 16px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px;
+}
+
+.pin-link:hover {
+  color: #60a5fa;
+}
+
 /* ===== TOAST ===== */
 .toast {
   position: fixed;
