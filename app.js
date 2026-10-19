@@ -867,8 +867,9 @@ function handlePinConfirm() {
     pinInputs.classList.add("success");
     pinHint.textContent = "PIN saved! Confirming...";
     setTimeout(() => {
+      const cb = pinCallback;
       closePinModal();
-      if (pinCallback) pinCallback();
+      if (cb) cb();
     }, 550);
     return;
   }
@@ -895,8 +896,9 @@ function handlePinConfirm() {
     pinInputs.classList.add("success");
     pinHint.textContent = "New PIN saved!";
     setTimeout(() => {
+      const cb = pinCallback;
       closePinModal();
-      if (pinCallback) pinCallback();
+      if (cb) cb();
     }, 550);
     return;
   }
@@ -906,8 +908,9 @@ function handlePinConfirm() {
     pinInputs.classList.add("success");
     pinHint.textContent = "PIN correct ✓";
     setTimeout(() => {
+      const cb = pinCallback;
       closePinModal();
-      if (pinCallback) pinCallback();
+      if (cb) cb();
     }, 350);
   } else {
     showPinError("Wrong PIN. Try again.");
